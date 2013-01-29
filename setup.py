@@ -120,7 +120,7 @@ tests_require = reqs('test3.txt' if PY3 else 'test.txt')
 
 setup(
     name='kombu',
-    version=meta['VERSION'],
+    version=meta['VERSION'] + "_vayana",
     description=meta['doc'],
     author=meta['author'],
     author_email=meta['contact'],

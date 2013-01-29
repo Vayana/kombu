@@ -471,7 +471,8 @@ class Channel(virtual.Channel):
                 raise Empty()
             if dest__item:
                 dest, item = dest__item
-                dest = dest.rsplit(self.sep, 1)[0]
+                dest = dest.decode("utf-8").rsplit(self.sep, 1)[0]
+                item = item.decode("utf-8")
                 self._rotate_cycle(dest)
                 return loads(item), dest
             else:
@@ -564,7 +565,7 @@ class Channel(virtual.Channel):
             if not values:
                 raise InconsistencyError(
                     'Queue list empty or does not exist: {0!r}'.format(key))
-            return [tuple(val.split(self.sep)) for val in values]
+            return [tuple(val.decode("utf-8").split(self.sep)) for val in values]
 
     def _purge(self, queue):
         with self.conn_or_acquire() as client:
