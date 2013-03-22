@@ -27,7 +27,8 @@ from .five import Empty, range, string_t, text_t, LifoQueue as _LifoQueue
 from .log import get_logger
 from .transport import get_transport_cls, supports_librabbitmq
 from .utils import cached_property, retry_over_time, shufflecycle
-from .utils.compat import OrderedDict
+from .utils.compat import OrderedDict, get_errno
+from .utils.functional import promise
 from .utils.url import parse_url
 
 __all__ = ['Connection', 'ConnectionPool', 'ChannelPool']
@@ -292,7 +293,7 @@ class Connection(object):
             self.more_to_read = False
             return False
         except socket.error as exc:
-            if exc.errno in (errno.EAGAIN, errno.EINTR):
+            if get_errno(exc) in (errno.EAGAIN, errno.EINTR):
                 self.more_to_read = False
                 return False
             raise
@@ -863,7 +864,12 @@ class Resource(object):
                     try:
                         R = self.prepare(R)
                     except BaseException:
-                        self.release(R)
+                        if isinstance(R, promise):
+                            # no evaluated yet, just put it back
+                            self._resource.put_nowait(R)
+                        else:
+                            # evaluted so must try to release/close first.
+                            self.release(R)
                         raise
                     self._dirty.add(R)
                     break
@@ -1002,7 +1008,7 @@ class ConnectionPool(Resource):
                     conn = self.new()
                     conn.connect()
                 else:
-                    conn = self.new
+                    conn = promise(self.new)
                 self._resource.put_nowait(conn)
 
     def prepare(self, resource):
@@ -1021,14 +1027,14 @@ class ChannelPool(Resource):
                                           preload=preload)
 
     def new(self):
-        return self.connection.channel
+        return promise(self.connection.channel)
 
     def setup(self):
         channel = self.new()
         if self.limit:
             for i in range(self.limit):
                 self._resource.put_nowait(
-                    i < self.preload and channel() or channel)
+                    i < self.preload and channel() or promise(channel))
 
     def prepare(self, channel):
         if isinstance(channel, Callable):

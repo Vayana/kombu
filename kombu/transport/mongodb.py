@@ -48,7 +48,7 @@ class Channel(virtual.Channel):
     def _get(self, queue):
         try:
             if queue in self._fanout_queues:
-                msg = self._queue_cursors[queue].next()
+                msg = next(self._queue_cursors[queue])
                 self._queue_readcounts[queue] += 1
                 return loads(msg['payload'])
             else:
@@ -132,7 +132,7 @@ class Channel(virtual.Channel):
         #
         #   mongodb://[username:password@]host1[:port1][,host2[:port2],
         #   ...[,hostN[:portN]]][/[?options]]
-        mongoconn = Connection(host=hostname)
+        mongoconn = Connection(host=hostname, ssl=conninfo.ssl)
         version = mongoconn.server_info()['version']
         if tuple(map(int, version.split('.')[:2])) < (1, 3):
             raise NotImplementedError(
