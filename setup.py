@@ -154,4 +154,7 @@ setup(
         'Topic :: Software Development :: Libraries :: Python Modules',
     ],
     long_description=long_description,
+    dependency_links = [
+        'https://github.com/celery/py-amqp/zipball/4518aa8be2a72f1a41bddc90be455fe73a4b5b11#egg=amqp-1.2.0',
+    ],
     **extra)
