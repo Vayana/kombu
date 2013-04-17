@@ -9,8 +9,6 @@ from __future__ import absolute_import
 
 import socket
 
-import socket
-
 from bisect import bisect
 from contextlib import contextmanager
 from time import time
@@ -315,6 +313,7 @@ class Channel(virtual.Channel):
     _in_poll = False
     _in_listen = False
     _fanout_queues = {}
+    ack_emulation = True
     unacked_key = 'unacked'
     unacked_index_key = 'unacked_index'
     unacked_mutex_key = 'unacked_mutex'
@@ -328,7 +327,8 @@ class Channel(virtual.Channel):
 
     from_transport_options = (
         virtual.Channel.from_transport_options +
-        ('unacked_key',
+        ('ack_emulation',
+         'unacked_key',
          'unacked_index_key',
          'unacked_mutex_key',
          'unacked_mutex_expire',
@@ -342,6 +342,9 @@ class Channel(virtual.Channel):
     def __init__(self, *args, **kwargs):
         super_ = super(Channel, self)
         super_.__init__(*args, **kwargs)
+
+        if not self.ack_emulation:  # disable visibility timeout
+            self.QoS = virtual.QoS
 
         self._queue_cycle = []
         self.Client = self._get_client()
@@ -642,17 +645,6 @@ class Channel(virtual.Channel):
             def __init__(self, *args, **kwargs):
                 super(KombuRedis, self).__init__(*args, **kwargs)
                 self.connection = self.connection_pool.get_connection('_')
-
-            def execute_command(self, *args, **options):
-                conn = self.connection
-                command_name = args[0]
-                try:
-                    conn.send_command(*args)
-                    return self.parse_response(conn, command_name, **options)
-                except redis.ConnectionError:
-                    conn.disconnect()
-                    conn.send_command(*args)
-                    return self.parse_response(conn, command_name, **options)
 
         return KombuRedis
 
